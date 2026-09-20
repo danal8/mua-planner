@@ -1,0 +1,44 @@
+name: Deploy MUA Planner to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract source
+        run: unzip -q -o mua-planner-source.zip -d source
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install
+        working-directory: source
+        run: npm ci
+      - name: Build
+        working-directory: source
+        run: npm run build:github
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: source/gh-dist
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
