@@ -24,6 +24,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Extract source
         run: unzip -q -o mua-planner-source.zip -d source
+      - name: Restore mobile pull to refresh
+        run: sed -i 's/overscroll-behavior-y:none/overscroll-behavior-y:auto/g' source/app/globals.css
       - uses: pnpm/action-setup@v4
         with:
           version: 10.17.1
