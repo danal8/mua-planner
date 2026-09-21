@@ -24,8 +24,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Extract source
         run: unzip -q -o mua-planner-source.zip -d source
-      - name: Restore mobile pull to refresh
-        run: sed -i 's/overscroll-behavior-y:none/overscroll-behavior-y:auto/g' source/app/globals.css
+      - name: Improve Android mobile behavior
+        run: |
+          sed -i 's/overscroll-behavior-y:none/overscroll-behavior-y:auto/g' source/app/globals.css
+          cat >> source/app/globals.css <<'CSS'
+          html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+          @media(max-width:850px){.bottom-nav{background:#fffdf9;backdrop-filter:none;transform:none;backface-visibility:visible;contain:none}.bottom-nav button{font-size:clamp(.68rem,2.8vw,.75rem);padding-inline:clamp(8px,3.4vw,17px)}}
+          CSS
       - uses: pnpm/action-setup@v4
         with:
           version: 10.17.1
