@@ -1,0 +1,56 @@
+name: Daily Supabase Backup
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ετοιμασία backups branch
+        run: |
+          git fetch origin backups || true
+          if git ls-remote --exit-code --heads origin backups; then
+            git checkout backups
+          else
+            git checkout --orphan backups
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+      - name: Λήψη δεδομένων από Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -e
+          DAY=$(date +%F)
+          mkdir -p "backups/$DAY"
+          curl -sS -f "$SUPABASE_URL/rest/v1/clients?select=*" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -o "backups/$DAY/clients.json"
+          curl -sS -f "$SUPABASE_URL/rest/v1/appointments?select=*" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -o "backups/$DAY/appointments.json"
+
+      - name: Καθαρισμός παλιών backups (>30 μέρες)
+        run: |
+          find backups -maxdepth 1 -mindepth 1 -type d -mtime +30 -exec rm -rf {} \; || true
+
+      - name: Commit & push
+        run: |
+          git config user.name "backup-bot"
+          git config user.email "actions@github.com"
+          git add backups
+          git commit -m "Backup $(date +%F)" || echo "Χωρίς αλλαγές"
+          git push origin backups
